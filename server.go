@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"sync"
 	"io/ioutil"
+	"fmt"
+	"time"
 )
 
 type Coaster struct {
@@ -57,14 +59,23 @@ func (h *coastersController) store(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
+
+	ct := r.Header.Get("Content-Type")
+	if ct != "application/json" {
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		w.Write([]byte("Content-Type must be application/json\n"))
+		return
+	}
 	
 	var coaster Coaster
 	err = json.Unmarshal(bodyBytes, &coaster)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusUnsupportedMediaType)
 		w.Write([]byte("Invalid JSON format\n"))
 		return
 	}
+
+	coaster.ID = fmt.Sprintf("%d", time.Now().UnixNano())
 	
 	h.Lock()
 	h.data[coaster.ID] = coaster
