@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"fmt"
 	"time"
+	"strings"
 )
 
 type Coaster struct {
@@ -51,6 +52,42 @@ func (h *coastersController) coasters(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/**
+ * GET /coasters/:id
+ */
+func (h *coastersController) show(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 3 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	
+	id := parts[2]
+
+	h.Lock()
+	coaster, ok := h.data[id]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Coaster not found\n"))
+		h.Unlock()
+		return
+	}
+	h.Unlock()
+
+	jsonBtyes, err := json.Marshal(coaster)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonBtyes)
+}
+
+/**
+ * POST /coasters
+ */
 func (h *coastersController) store(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
@@ -70,7 +107,7 @@ func (h *coastersController) store(w http.ResponseWriter, r *http.Request) {
 	var coaster Coaster
 	err = json.Unmarshal(bodyBytes, &coaster)
 	if err != nil {
-		w.WriteHeader(http.StatusUnsupportedMediaType)
+		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Invalid JSON format\n"))
 		return
 	}
@@ -82,10 +119,11 @@ func (h *coastersController) store(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("Coaster created successfully\n"))
 	defer h.Unlock()
-
-
 }
 
+/**
+ * GET /coasters
+ */
 func (h *coastersController) index(w http.ResponseWriter, r *http.Request) {
 	coasters := make([]Coaster, len(h.data))
 
@@ -112,6 +150,7 @@ func main() {
 	coasterController := newCoasterController();
 
 	http.HandleFunc("/coasters", coasterController.coasters)
+	http.HandleFunc("/coasters/", coasterController.show)
 
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
