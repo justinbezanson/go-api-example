@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 	"strings"
+	"os"
 )
 
 type Coaster struct {
@@ -18,9 +19,35 @@ type Coaster struct {
 	Height int `json:"height"`
 }
 
+type AdminPortal struct {
+	password string
+}
+
 type coastersController struct {
 	sync.Mutex
 	data map[string]Coaster
+}
+
+func newAdminPortal() *AdminPortal {
+	password := os.Getenv("ADMIN_PASSWORD")
+	if password == "" {
+		panic("ADMIN_PASSWORD environment variable is not set")
+	}
+
+	return &AdminPortal{
+		password: password,
+	}
+}
+
+func (a *AdminPortal) handler(w http.ResponseWriter, r *http.Request) {
+	user, pass, ok := r.BasicAuth()
+	if !ok || user != "admin" || pass != a.password {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("401 - Unauthorized\n"))
+		return
+	}
+
+	w.Write([]byte("<html><body><h1>Welcome to the Admin Portal</h1></body></html>"))
 }
 
 func newCoasterController() *coastersController {
@@ -147,6 +174,9 @@ func (h *coastersController) index(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	adminPortal := newAdminPortal()
+	http.HandleFunc("/admin", adminPortal.handler)
+	
 	coasterController := newCoasterController();
 
 	http.HandleFunc("/coasters", coasterController.coasters)
