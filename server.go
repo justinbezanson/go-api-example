@@ -9,6 +9,7 @@ import (
 	"time"
 	"strings"
 	"os"
+	"math/rand"
 )
 
 type Coaster struct {
@@ -79,6 +80,31 @@ func (h *coastersController) coasters(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *coastersController) randomCosaster(w http.ResponseWriter, r *http.Request) {
+	ids := make([]string, len(h.data))
+	h.Lock()
+	i := 0
+	for id := range h.data {
+		ids[i] = id
+		i++
+	}
+	defer h.Unlock()
+
+	var target string
+	if len(ids) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	} else if len(ids) == 1 {
+		target = ids[0]
+	} else {
+		rand.Seed(time.Now().UnixNano())
+		target = ids[rand.Intn(len(ids))]
+	}
+
+	w.Header().Set("Location", fmt.Sprintf("/coasters/%s", target))
+	w.WriteHeader(http.StatusFound)
+}
+
 /**
  * GET /coasters/:id
  */
@@ -90,6 +116,11 @@ func (h *coastersController) show(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	id := parts[2]
+
+	if(id == "random") {
+		h.randomCosaster(w, r)
+		return
+	}
 
 	h.Lock()
 	coaster, ok := h.data[id]
@@ -176,9 +207,8 @@ func (h *coastersController) index(w http.ResponseWriter, r *http.Request) {
 func main() {
 	adminPortal := newAdminPortal()
 	http.HandleFunc("/admin", adminPortal.handler)
-	
-	coasterController := newCoasterController();
 
+	coasterController := newCoasterController();
 	http.HandleFunc("/coasters", coasterController.coasters)
 	http.HandleFunc("/coasters/", coasterController.show)
 

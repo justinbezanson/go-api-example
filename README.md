@@ -1,4 +1,4 @@
-# go-api-example
+# Roller Coaster API in Go
 
 ## Getting Started
 
@@ -9,7 +9,7 @@
 ## Running the Application
 
 ```bash
-go run server.go
+ADMIN_PASSWORD=admin go run server.go
 ```
 
 ## CURL commands
@@ -38,4 +38,15 @@ curl -X POST http://localhost:8080/coasters \
     "in_park": "Park A",
     "height": 50
   }'
+ ```
+
+ - POST /coasters/random
+
+ ```bash
+ curl -X POST http://localhost:8080/coasters/random -L
+ ```
+
+ - GET /admin
+ ```bash
+ curl http://localhost:8080/admin -X GET -u admin:admin
  ```
